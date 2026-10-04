@@ -1,0 +1,7 @@
+.env
+tasks.db
+tasks.db-wal
+tasks.db-shm
+worktrees/
+__pycache__/
+.venv/
