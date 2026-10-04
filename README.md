@@ -11,11 +11,35 @@ A weekend agent runner. Slack message in, PR out.
 - **PR**: on pass, push the branch and `gh pr create`.
 - **UI**: http://localhost:7777
 
+## Prerequisites
+
+- **`claude`** on your PATH and logged in. Both agents are `claude -p` subprocesses.
+- **`gh`** installed and authenticated (`gh auth status`). Used to open and list PRs.
+- **This directory must be a git repo with an `origin` remote.** Tasks branch off
+  `main` here and their PRs open against this repo. To point the factory at a
+  different repo, change `REPO` and `BASE_BRANCH` in `runner.py`.
+- Python 3.9+ should do; developed and tested on 3.14.
+
 ## Run
 
     python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-    cp .env.example .env   # fill in your Slack tokens
+    cp .env.example .env   # fill in SLACK_BOT_TOKEN and SLACK_CHANNEL_ID
     .venv/bin/python app.py
+
+Then open http://localhost:7777 and post a message in your task channel.
+`PORT` defaults to 7777 and steps up if that port is taken.
+
+## Where things land
+
+| path | what | committed? |
+|---|---|---|
+| `tasks.db` | all task state; `sqlite3 tasks.db "select id, status, pr_url from tasks"` | no, gitignored |
+| `logs/task-<id>.log` | full IMP + QA output for a task, stdout and stderr | no, gitignored |
+| `worktrees/task-<id>/` | the scratch worktree that task ran in, kept after the run | no, gitignored |
+| `.env` | your Slack token | no, gitignored |
+
+Worktrees are deliberately left in place so you can inspect what an agent did.
+Clean up a finished one with `git worktree remove worktrees/task-<id>`.
 
 ## Slack app setup (one time)
 
