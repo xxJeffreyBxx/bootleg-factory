@@ -1,0 +1,112 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>bootleg factory</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#272b34; --fg:#dfe3ea; --dim:#858d9b; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--fg);
+         font:13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  h1 { font-size:15px; letter-spacing:.14em; text-transform:uppercase; margin:0 0 20px; }
+  h2 { font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+       color:var(--dim); margin:0 0 10px; }
+  section { margin-bottom:28px; }
+  table { width:100%; border-collapse:collapse; background:var(--panel);
+          border:1px solid var(--line); }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line);
+           vertical-align:top; }
+  th { color:var(--dim); font-weight:normal; }
+  tr:last-child td { border-bottom:none; }
+  td.text { max-width:420px; }
+  a { color:#7fb2ff; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:9px; font-size:11px;
+          border:1px solid currentColor; }
+  .queued      { color:#858d9b; }
+  .imp_running { color:#ffc84a; }
+  .qa_running  { color:#c08cff; }
+  .pr_open     { color:#58d68d; }
+  .done        { color:#4a9eff; }
+  .failed      { color:#ff6b6b; }
+  .empty { color:var(--dim); padding:10px; background:var(--panel);
+           border:1px solid var(--line); }
+  pre { background:#000; border:1px solid var(--line); padding:12px; margin:0;
+        max-height:55vh; overflow:auto; white-space:pre-wrap; }
+  button { background:none; border:1px solid var(--line); color:var(--fg);
+           font:inherit; padding:1px 8px; cursor:pointer; }
+</style>
+
+<h1>bootleg factory</h1>
+
+<section>
+  <h2>Tasks</h2>
+  <table>
+    <thead><tr>
+      <th>id</th><th>task</th><th>status</th><th>created</th><th>updated</th>
+      <th>pr</th><th>log</th>
+    </tr></thead>
+    <tbody id="tasks"></tbody>
+  </table>
+</section>
+
+<section id="logbox" hidden>
+  <h2>Log &mdash; task <span id="logid"></span> <button onclick="closeLog()">close</button></h2>
+  <pre id="log"></pre>
+</section>
+
+<section>
+  <h2>Open PRs needing review</h2>
+  <div id="prs"></div>
+</section>
+
+<script>
+let openLog = null;
+
+const esc = s => String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const clock = t => t ? new Date(t * 1000).toLocaleTimeString() : '';
+
+async function get(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(url + ' -> ' + r.status);
+  return r;
+}
+
+async function refresh() {
+  const tasks = await (await get('/api/tasks')).json();
+  document.getElementById('tasks').innerHTML = tasks.length ? tasks.map(t => `
+    <tr>
+      <td>${t.id}</td>
+      <td class="text">${esc(t.text)}</td>
+      <td><span class="pill ${t.status}">${t.status}</span></td>
+      <td>${clock(t.created_at)}</td>
+      <td>${clock(t.updated_at)}</td>
+      <td>${t.pr_url ? `<a href="${esc(t.pr_url)}" target="_blank">open</a>` : ''}</td>
+      <td><button onclick="showLog(${t.id})">log</button></td>
+    </tr>`).join('') : '<tr><td colspan="7">No tasks yet. Post one in Slack.</td></tr>';
+
+  const prs = await (await get('/api/prs')).json();
+  document.getElementById('prs').innerHTML = prs.length ? `<table><tbody>${prs.map(p => `
+    <tr>
+      <td>#${p.number}</td>
+      <td class="text"><a href="${esc(p.url)}" target="_blank">${esc(p.title)}</a></td>
+      <td>${esc(p.headRefName)}</td>
+    </tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing waiting on review.</div>';
+
+  if (openLog !== null) {
+    document.getElementById('log').textContent = await (await get('/log/' + openLog)).text();
+  }
+}
+
+function showLog(id) {
+  openLog = id;
+  document.getElementById('logid').textContent = id;
+  document.getElementById('logbox').hidden = false;
+  refresh();
+}
+
+function closeLog() {
+  openLog = null;
+  document.getElementById('logbox').hidden = true;
+}
+
+refresh();
+setInterval(() => refresh().catch(e => console.error(e)), 5000);
+</script>
