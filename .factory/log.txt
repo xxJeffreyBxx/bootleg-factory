@@ -1,0 +1,3 @@
+=== IMP starting in /Users/jeffreybodek/bootleg-factory/worktrees/task-1 on bootleg/task-1 ===
+I created `reverse_string.py`, which reverses the characters of text given as arguments or on stdin. I tested it both ways: `hello world` gives `dlrow olleh`, and `abc` gives `cba`.
+=== IMP exited with code 0 ===
