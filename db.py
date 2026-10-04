@@ -108,16 +108,3 @@ def set_fields(task_id, **fields):
         (*fields.values(), task_id),
     )
 
-
-def append_log(task_id, text):
-    """Append to a task's log, keeping only the tail so the column stays sane."""
-    with _lock:
-        row = connect().execute(
-            "SELECT last_log FROM tasks WHERE id=?", (task_id,)
-        ).fetchone()
-        log = ((row["last_log"] or "") + text)[-20000:]
-        connect().execute(
-            "UPDATE tasks SET last_log=?, updated_at=? WHERE id=?",
-            (log, time.time(), task_id),
-        )
-        _conn.commit()
