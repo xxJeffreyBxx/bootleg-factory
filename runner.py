@@ -14,12 +14,16 @@ import prompts
 
 REPO = os.path.dirname(os.path.abspath(__file__))
 WORKTREES = os.path.join(REPO, "worktrees")
+# Logs live outside the worktree so they never end up in a task's diff.
+LOGS = os.path.join(REPO, "logs")
 BASE_BRANCH = "main"
 
 # IMP may read, write and run code to check its work, but git is denied outright.
 IMP_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash(python3 *)", "Bash(pytest *)"]
 # QA only looks. --restricted additionally strips the tools that execute code.
 QA_TOOLS = ["Read", "Glob", "Grep"]
+
+QA_BANNER = "=== QA starting (adversarial review) ==="
 
 VERDICT_RE = re.compile(r"^VERDICT:\s*(pass|fail)\s*$", re.MULTILINE | re.IGNORECASE)
 
@@ -33,7 +37,7 @@ def git(*args, cwd=REPO):
 
 
 def log_path(task_id):
-    return os.path.join(WORKTREES, f"task-{task_id}", ".factory", "log.txt")
+    return os.path.join(LOGS, f"task-{task_id}.log")
 
 
 def note(task_id, text):
@@ -103,7 +107,7 @@ def diff_of(task, limit=60000):
 
 
 def start_qa(task):
-    note(task["id"], "=== QA starting (adversarial review) ===")
+    note(task["id"], QA_BANNER)
     prompt = prompts.QA_PROMPT.format(task_text=task["text"], diff=diff_of(task))
     return spawn(task["id"], task["worktree_path"], prompt, QA_TOOLS, restricted=True)
 
@@ -117,7 +121,7 @@ def parse_verdict(log_text):
 def qa_findings(log_text, limit=1500):
     """The QA output, minus the verdict line, for the PR body and Slack reply."""
     body = VERDICT_RE.sub("", log_text).strip()
-    body = body.split("=== QA starting (adversarial review) ===")[-1].strip()
+    body = body.split(QA_BANNER)[-1].strip()
     return body[-limit:]
 
 
