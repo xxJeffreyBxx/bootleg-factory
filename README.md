@@ -19,23 +19,21 @@ A weekend agent runner. Slack message in, PR out.
 
 ## Slack app setup (one time)
 
-At api.slack.com/apps -> Create New App -> From scratch:
+Ingestion polls `conversations.history`, so you only need a bot token.
 
-1. **Socket Mode** -> enable. Generate an app-level token with
-   `connections:write`. That is your `SLACK_APP_TOKEN` (`xapp-1-...`).
-2. **OAuth & Permissions** -> bot token scopes: `channels:history`, `chat:write`.
-3. **Event Subscriptions** -> enable, subscribe to bot event `message.channels`.
-4. **Install to Workspace** -> copy the bot token (`xoxb-...`) into
-   `SLACK_BOT_TOKEN`.
-5. Invite the bot to your channel (`/invite @yourbot`) and put that channel's
-   ID in `SLACK_CHANNEL_ID`.
+1. api.slack.com/apps -> your app -> **OAuth & Permissions** -> bot scopes
+   `channels:history` and `chat:write`. Install to workspace.
+2. Copy the bot token (`xoxb-...`) into `SLACK_BOT_TOKEN`.
+3. Create a dedicated channel, `/invite` the bot, and put that channel's ID in
+   `SLACK_CHANNEL_ID`. Use a channel of its own: every new top-level human
+   message in it becomes a task.
 
 ## Layout
 
 | file | job |
 |---|---|
 | `app.py` | entrypoint: checks env, starts web + pipeline + Slack |
-| `slackbot.py` | ingestion: one channel message becomes one task |
+| `slackbot.py` | ingestion: polls the channel, one message becomes one task |
 | `db.py` | SQLite state, atomic status claims |
 | `factory.py` | the poll loop that advances tasks through the pipeline |
 | `runner.py` | worktrees, `claude -p` subprocesses, verdict parsing, `gh pr create` |

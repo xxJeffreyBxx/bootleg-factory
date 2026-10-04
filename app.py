@@ -8,7 +8,7 @@ import sys
 
 from dotenv import load_dotenv
 
-REQUIRED = ("SLACK_BOT_TOKEN", "SLACK_APP_TOKEN", "SLACK_CHANNEL_ID")
+REQUIRED = ("SLACK_BOT_TOKEN", "SLACK_CHANNEL_ID")
 
 
 def main():
@@ -26,7 +26,7 @@ def main():
     notify, serve = slackbot.build()
     factory.start(notify)
     print("[factory] pipeline running")
-    print(f"[slack]   listening on channel {os.environ['SLACK_CHANNEL_ID']}")
+    print(f"[slack]   polling channel {os.environ['SLACK_CHANNEL_ID']}")
     serve()  # blocks
 
 

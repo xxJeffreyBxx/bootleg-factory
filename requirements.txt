@@ -1,2 +1,2 @@
-slack_bolt>=1.21
+slack_sdk>=3.27
 python-dotenv>=1.0
