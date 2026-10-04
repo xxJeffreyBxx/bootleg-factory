@@ -35,6 +35,8 @@ def build():
     print(f"[slack]   authed as {who['user']} in {who['team']}")
 
     def notify(task, text):
+        if not task["slack_channel"]:
+            return  # made in the web UI; there's no thread to reply in
         try:
             client.chat_postMessage(
                 channel=task["slack_channel"], thread_ts=task["slack_thread"],

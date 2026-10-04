@@ -32,9 +32,23 @@
         max-height:55vh; overflow:auto; white-space:pre-wrap; }
   button { background:none; border:1px solid var(--line); color:var(--fg);
            font:inherit; padding:1px 8px; cursor:pointer; }
+  form { display:flex; gap:8px; }
+  input { flex:1; background:var(--panel); border:1px solid var(--line); color:var(--fg);
+          font:inherit; padding:6px 10px; }
+  form button { padding:6px 14px; }
+  .error { color:#ff6b6b; margin-top:6px; }
 </style>
 
 <h1>bootleg factory</h1>
+
+<section>
+  <h2>New task</h2>
+  <form onsubmit="addTask(event)">
+    <input id="newtext" placeholder="Describe the task" autocomplete="off">
+    <button>submit</button>
+  </form>
+  <div id="newerr" class="error" hidden></div>
+</section>
 
 <section>
   <h2>Tasks</h2>
@@ -80,7 +94,7 @@ async function refresh() {
       <td>${clock(t.updated_at)}</td>
       <td>${t.pr_url ? `<a href="${esc(t.pr_url)}" target="_blank">open</a>` : ''}</td>
       <td><button onclick="showLog(${t.id})">log</button></td>
-    </tr>`).join('') : '<tr><td colspan="7">No tasks yet. Post one in Slack.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="7">No tasks yet. Add one above or post one in Slack.</td></tr>';
 
   const prs = await (await get('/api/prs')).json();
   document.getElementById('prs').innerHTML = prs.length ? `<table><tbody>${prs.map(p => `
@@ -92,6 +106,27 @@ async function refresh() {
 
   if (openLog !== null) {
     document.getElementById('log').textContent = await (await get('/log/' + openLog)).text();
+  }
+}
+
+async function addTask(e) {
+  e.preventDefault();  // a form submits on Enter for free
+  const input = document.getElementById('newtext');
+  const err = document.getElementById('newerr');
+  err.hidden = true;
+  try {
+    const r = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: input.value}),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body.error || 'request failed: ' + r.status);
+    input.value = '';
+    await refresh();
+  } catch (ex) {
+    err.textContent = ex.message;
+    err.hidden = false;
   }
 }
 
