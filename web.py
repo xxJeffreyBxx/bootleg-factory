@@ -1,9 +1,10 @@
-"""The status UI. Stdlib http.server; four routes, no framework."""
+"""The status UI. Stdlib http.server; five routes, no framework."""
 
 import json
 import os
 import socket
 import threading
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import db
@@ -14,6 +15,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # Columns worth showing; last_log is big, so the UI fetches it separately.
 TASK_FIELDS = ("id", "text", "status", "slack_user", "created_at", "updated_at",
                "worktree_path", "branch", "pr_url")
+
+MAX_BODY = 64 * 1024  # a task is a sentence or a paragraph, not a file
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -32,6 +35,30 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, "text/plain; charset=utf-8", body.encode())
         else:
             self.send(404, "text/plain", b"not found")
+
+    def do_POST(self):
+        if self.path != "/api/tasks":
+            return self.send(404, "text/plain", b"not found")
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return self.error(400, "bad Content-Length")
+        if length > MAX_BODY:
+            return self.error(413, "body too large")
+        try:
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except ValueError:
+            return self.error(400, "body must be JSON")
+        text = body.get("text") if isinstance(body, dict) else None
+        if not isinstance(text, str) or not text.strip():
+            return self.error(400, "text is required")
+        # No Slack message behind this task: a synthetic, unique slack_ts keeps
+        # the UNIQUE index happy, and the empty channel tells notify to stay quiet.
+        task_id = db.add_task(text.strip(), "", "", f"ui-{uuid.uuid4().hex}", "")
+        self.send(200, "application/json", json.dumps({"id": task_id}).encode())
+
+    def error(self, code, message):
+        self.send(code, "application/json", json.dumps({"error": message}).encode())
 
     def send(self, code, ctype, body):
         self.send_response(code)
