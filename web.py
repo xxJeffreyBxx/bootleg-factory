@@ -43,6 +43,8 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             return self.error(400, "bad Content-Length")
+        if length < 0:  # rfile.read(-1) would block until the client hangs up
+            return self.error(400, "bad Content-Length")
         if length > MAX_BODY:
             return self.error(413, "body too large")
         try:
