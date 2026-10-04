@@ -53,9 +53,9 @@ def free_port(start=7777, tries=20):
     raise RuntimeError(f"no free port in {start}..{start + tries}")
 
 
-def start(port=None):
-    """Serve the UI in a background thread. Returns the port in use."""
-    port = port or free_port()
+def start(preferred=7777):
+    """Serve the UI in a background thread. Returns the port actually used."""
+    port = free_port(preferred)
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     threading.Thread(target=server.serve_forever, daemon=True, name="web").start()
     return port

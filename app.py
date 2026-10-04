@@ -20,7 +20,7 @@ def main():
     import db, factory, slackbot, web
 
     db.connect()
-    port = web.start(int(os.environ.get("PORT", 7777)) or None)
+    port = web.start(int(os.environ.get("PORT") or 7777))
     print(f"[web]     http://localhost:{port}")
 
     notify, serve = slackbot.build()
