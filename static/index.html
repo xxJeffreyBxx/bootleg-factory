@@ -32,23 +32,29 @@
         max-height:55vh; overflow:auto; white-space:pre-wrap; }
   button { background:none; border:1px solid var(--line); color:var(--fg);
            font:inherit; padding:1px 8px; cursor:pointer; }
-  form { display:flex; gap:8px; }
-  input { flex:1; background:var(--panel); border:1px solid var(--line); color:var(--fg);
-          font:inherit; padding:6px 10px; }
+  /* Main content left, task composer right. min-width:0 lets the tables
+     shrink inside the flex item instead of pushing the page sideways. */
+  .layout { display:flex; gap:24px; align-items:flex-start; }
+  main { flex:1; min-width:0; }
+  aside { width:340px; flex:none; position:sticky; top:24px; }
+  aside section { margin-bottom:0; }
+  @media (max-width:900px) {
+    .layout { flex-direction:column; }
+    aside { width:100%; position:static; }
+  }
+  form { display:flex; flex-direction:column; gap:8px; }
+  textarea { height:150px; resize:vertical; overflow-y:auto; background:var(--panel);
+             border:1px solid var(--line); color:var(--fg); font:inherit;
+             padding:8px 10px; }
   form button { padding:6px 14px; }
+  .hint { color:var(--dim); font-size:11px; margin-top:6px; }
   .error { color:#ff6b6b; margin-top:6px; }
 </style>
 
 <h1>bootleg factory</h1>
 
-<section>
-  <h2>New task</h2>
-  <form onsubmit="addTask(event)">
-    <input id="newtext" placeholder="Describe the task" autocomplete="off">
-    <button>submit</button>
-  </form>
-  <div id="newerr" class="error" hidden></div>
-</section>
+<div class="layout">
+<main>
 
 <section>
   <h2>Tasks</h2>
@@ -70,6 +76,21 @@
   <h2>Open PRs needing review</h2>
   <div id="prs"></div>
 </section>
+
+</main>
+<aside>
+  <section>
+    <h2>New task</h2>
+    <form onsubmit="addTask(event)">
+      <textarea id="newtext" placeholder="Describe the task"
+                onkeydown="maybeSubmit(event)"></textarea>
+      <button>submit</button>
+    </form>
+    <div class="hint">Enter submits &middot; Shift+Enter adds a line</div>
+    <div id="newerr" class="error" hidden></div>
+  </section>
+</aside>
+</div>
 
 <script>
 let openLog = null;
@@ -94,7 +115,7 @@ async function refresh() {
       <td>${clock(t.updated_at)}</td>
       <td>${t.pr_url ? `<a href="${esc(t.pr_url)}" target="_blank">open</a>` : ''}</td>
       <td><button onclick="showLog(${t.id})">log</button></td>
-    </tr>`).join('') : '<tr><td colspan="7">No tasks yet. Add one above or post one in Slack.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="7">No tasks yet. Add one on the right or post one in Slack.</td></tr>';
 
   const prs = await (await get('/api/prs')).json();
   document.getElementById('prs').innerHTML = prs.length ? `<table><tbody>${prs.map(p => `
@@ -109,8 +130,16 @@ async function refresh() {
   }
 }
 
+function maybeSubmit(e) {
+  // Enter sends it; Shift+Enter keeps the newline, since tasks can be long.
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    e.target.form.requestSubmit();
+  }
+}
+
 async function addTask(e) {
-  e.preventDefault();  // a form submits on Enter for free
+  e.preventDefault();  // never let the form do a real page submit
   const input = document.getElementById('newtext');
   const err = document.getElementById('newerr');
   err.hidden = true;
